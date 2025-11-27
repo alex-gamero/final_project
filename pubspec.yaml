@@ -41,6 +41,9 @@ dependencies:
   url_launcher: ^6.3.2
   intl: ^0.19.0
 
+  # Plugin used to securely store sensitive data in key-value pairs
+  flutter_secure_storage: ^9.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
