@@ -81,7 +81,7 @@ class HomePage extends StatelessWidget {
                     Icons.directions_car,
                     Colors.orange,
                         () {
-                      // Navigate to Cars for Sale page
+                      // Navigate to Cars for Sale page, Brr
                       _showComingSoonSnackbar(context, 'Cars');
                     },
                   ),
