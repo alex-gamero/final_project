@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'purchase_offers/purchase_offers_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -101,9 +102,15 @@ class HomePage extends StatelessWidget {
                     'Manage purchase offers',
                     Icons.attach_money,
                     Colors.purple,
+
+                        // Link to purchase offer page
                         () {
-                      // Navigate to Purchase Offer page
-                      _showComingSoonSnackbar(context, 'Purchase Offers');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PurchaseOfferPage(),
+                        ),
+                      );
                     },
                   ),
                 ],
