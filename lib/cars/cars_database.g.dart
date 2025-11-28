@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'app_database.dart';
+part of 'cars_database.dart';
 
 // **************************************************************************
 // FloorGenerator
