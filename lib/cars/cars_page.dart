@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:encrypted_shared_preferences/encrypted_shared_preferences.dart';
 import 'app_database.dart';
 import 'car_entity.dart';
 
@@ -16,6 +16,8 @@ class _CarsPageState extends State<CarsPage> {
 
   CarEntity? _selectedCar;
 
+  final EncryptedSharedPreferences _encryptedPrefs = EncryptedSharedPreferences();
+
   // Controllers
   final _make = TextEditingController();
   final _model = TextEditingController();
@@ -28,6 +30,7 @@ class _CarsPageState extends State<CarsPage> {
   void initState() {
     super.initState();
     _initDb();
+    _loadRecentSearch();
   }
 
   Future<void> _initDb() async {
@@ -241,6 +244,8 @@ class _CarsPageState extends State<CarsPage> {
                     _showErrorSnackbar("Please enter a car make first!");
                     return;
                   }
+
+                  await _saveRecentSearch(text);
 
                   final car = CarEntity(
                     id: DateTime.now().millisecondsSinceEpoch,
@@ -539,24 +544,43 @@ class _CarsPageState extends State<CarsPage> {
   // PREVIOUS CAR
   // ========================================================
   Future<void> _savePreviousCar(CarEntity car) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString('prev_make', car.make);
-    prefs.setString('prev_model', car.model);
-    prefs.setInt('prev_year', car.year);
-    prefs.setInt('prev_price', car.price);
-    prefs.setInt('prev_km', car.kilometres);
+    await _encryptedPrefs.setString('prev_make', car.make);
+    await _encryptedPrefs.setString('prev_model', car.model);
+    await _encryptedPrefs.setString('prev_year', car.year.toString());
+    await _encryptedPrefs.setString('prev_price', car.price.toString());
+    await _encryptedPrefs.setString('prev_km', car.kilometres.toString());
   }
 
   Future<void> _loadPreviousCarData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prevMake = await _encryptedPrefs.getString('prev_make');
+    final prevModel = await _encryptedPrefs.getString('prev_model');
+    final prevYear = await _encryptedPrefs.getString('prev_year');
+    final prevPrice = await _encryptedPrefs.getString('prev_price');
+    final prevKm = await _encryptedPrefs.getString('prev_km');
+
     setState(() {
-      _make.text = prefs.getString('prev_make') ?? '';
-      _model.text = prefs.getString('prev_model') ?? '';
-      _year.text = (prefs.getInt('prev_year') ?? 0).toString();
-      _price.text = (prefs.getInt('prev_price') ?? 0).toString();
-      _km.text = (prefs.getInt('prev_km') ?? 0).toString();
+      _make.text = prevMake;
+      _model.text = prevModel;
+      _year.text = prevYear;
+      _price.text = prevPrice;
+      _km.text = prevKm;
     });
     _showSuccessSnackbar("Previous car data loaded!");
+  }
+
+  // Method for saving recent searches in the Quick Add field
+  Future<void> _saveRecentSearch(String searchText) async {
+    if (searchText.trim().isNotEmpty) {
+      await _encryptedPrefs.setString('recent_search', searchText.trim());
+    }
+  }
+
+  // Method for loading recent search
+  Future<void> _loadRecentSearch() async {
+    final recentSearch = await _encryptedPrefs.getString('recent_search');
+    if (recentSearch.isNotEmpty) {
+      _quickAdd.text = recentSearch;
+    }
   }
 
   // ========================================================
