@@ -1,5 +1,6 @@
 import 'package:floor/floor.dart';
 
+//updated
 @entity
 class PurchaseOffer {
   @PrimaryKey(autoGenerate: true)
