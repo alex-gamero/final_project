@@ -11,11 +11,15 @@ class _CarsPageState extends State<CarsPage> {
   final List<Car> _cars = [];
   int? _selectedIndex;
 
+  // Controllers for FULL car creation
   final TextEditingController _makeController = TextEditingController();
   final TextEditingController _modelController = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _kmController = TextEditingController();
+
+  // CONTROLLER for PART 2 (quick add)
+  final TextEditingController _quickAddController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -27,41 +31,81 @@ class _CarsPageState extends State<CarsPage> {
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.orange,
         onPressed: _showAddCarDialog,
         child: const Icon(Icons.add),
       ),
+
       body: Row(
         children: [
           Expanded(
             child: Column(
               children: [
                 const SizedBox(height: 16),
+
+                // ---------------------------
+                //        PART 2
+                // ---------------------------
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: TextField(
-                    controller: _makeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Quick Add (Make only)',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (value) {
-                      if (value.trim().isEmpty) return;
-                      setState(() {
-                        _cars.add(Car(
-                          make: value,
-                          model: 'Unknown',
-                          year: 0,
-                          price: 0,
-                          kilometres: 0,
-                        ));
-                        _makeController.clear();
-                      });
-                    },
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      // Add button
+                      ElevatedButton(
+                        onPressed: () {
+                          final text = _quickAddController.text.trim();
+                          if (text.isEmpty) return;
+
+                          setState(() {
+                            _cars.add(
+                              Car(
+                                make: text,
+                                model: 'Unknown',
+                                year: 0,
+                                price: 0,
+                                kilometres: 0,
+                              ),
+                            );
+                            _quickAddController.clear();
+                          });
+                        },
+                        child: const Text("Add item"),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // TextField
+                      Expanded(
+                        child: TextField(
+                          controller: _quickAddController,
+                          decoration: const InputDecoration(
+                            labelText: 'Quick Add (Make)',
+                            border: OutlineInputBorder(),
+                          ),
+                          onSubmitted: (value) {
+                            if (value.trim().isEmpty) return;
+
+                            setState(() {
+                              _cars.add(Car(
+                                make: value,
+                                model: "Unknown",
+                                year: 0,
+                                price: 0,
+                                kilometres: 0,
+                              ));
+                              _quickAddController.clear();
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
                 const SizedBox(height: 16),
+
+                // LIST OF CARS
                 Expanded(
                   child: ListView.builder(
                     itemCount: _cars.length,
@@ -77,7 +121,8 @@ class _CarsPageState extends State<CarsPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => CarDetailsPage(car: car),
+                                builder: (context) =>
+                                    CarDetailsPage(car: car),
                               ),
                             );
                           }
@@ -86,7 +131,9 @@ class _CarsPageState extends State<CarsPage> {
                           color: selected ? Colors.orange.shade100 : null,
                           child: ListTile(
                             title: Text('${car.year} ${car.make} ${car.model}'),
-                            subtitle: Text('Price: \$${car.price} | KM: ${car.kilometres}'),
+                            subtitle: Text(
+                              'Price: \$${car.price} | KM: ${car.kilometres}',
+                            ),
                           ),
                         ),
                       );
@@ -97,6 +144,7 @@ class _CarsPageState extends State<CarsPage> {
             ),
           ),
 
+          // Right-side details (wide screens)
           if (isWide && _selectedIndex != null)
             SizedBox(
               width: 350,
@@ -107,6 +155,9 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
+  // ------------------------------
+  //  ADD CAR (FULL FORM)
+  // ------------------------------
   void _showAddCarDialog() {
     showDialog(
       context: context,
@@ -140,15 +191,19 @@ class _CarsPageState extends State<CarsPage> {
                     _modelController.text.trim().isEmpty) {
                   return;
                 }
+
                 setState(() {
-                  _cars.add(Car(
-                    make: _makeController.text,
-                    model: _modelController.text,
-                    year: int.tryParse(_yearController.text) ?? 0,
-                    price: int.tryParse(_priceController.text) ?? 0,
-                    kilometres: int.tryParse(_kmController.text) ?? 0,
-                  ));
+                  _cars.add(
+                    Car(
+                      make: _makeController.text,
+                      model: _modelController.text,
+                      year: int.tryParse(_yearController.text) ?? 0,
+                      price: int.tryParse(_priceController.text) ?? 0,
+                      kilometres: int.tryParse(_kmController.text) ?? 0,
+                    ),
+                  );
                 });
+
                 _clearFields();
                 Navigator.pop(context);
               },
@@ -160,6 +215,7 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
+  // Helpers
   Widget _input(TextEditingController c, String label, {bool number = false}) {
     return TextField(
       controller: c,
@@ -180,6 +236,9 @@ class _CarsPageState extends State<CarsPage> {
   }
 }
 
+// ----------------------------
+//   CAR MODEL
+// ----------------------------
 class Car {
   final String make;
   final String model;
@@ -196,6 +255,9 @@ class Car {
   });
 }
 
+// ----------------------------
+//   DETAILS PAGE
+// ----------------------------
 class CarDetailsPage extends StatelessWidget {
   final Car car;
 
@@ -216,8 +278,10 @@ class CarDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${car.year} ${car.make} ${car.model}',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(
+              '${car.year} ${car.make} ${car.model}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             Text('Price: \$${car.price}'),
             Text('Kilometres: ${car.kilometres}'),
