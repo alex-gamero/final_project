@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_android/shared_preferences_android.dart';
-import 'package:shared_preferences_web/shared_preferences_web.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'app_database.dart';
 import 'car_entity.dart';
 
@@ -16,7 +13,8 @@ class CarsPage extends StatefulWidget {
 class _CarsPageState extends State<CarsPage> {
   late AppDatabase _db;
   List<CarEntity> _cars = [];
-  int? _selectedIndex;
+
+  CarEntity? _selectedCar; // ⭐ MODO MASTER–DETAIL
 
   // Controllers
   final _make = TextEditingController();
@@ -24,7 +22,6 @@ class _CarsPageState extends State<CarsPage> {
   final _year = TextEditingController();
   final _price = TextEditingController();
   final _km = TextEditingController();
-
   final _quickAdd = TextEditingController();
 
   @override
@@ -46,103 +43,296 @@ class _CarsPageState extends State<CarsPage> {
     setState(() => _cars = list);
   }
 
-  // ------------------------------
-  // ADD / UPDATE / DELETE
-  // ------------------------------
-  void _showAddCarDialog({CarEntity? existingCar}) async {
-    if (existingCar != null) {
-      // Editing
-      _make.text = existingCar.make;
-      _model.text = existingCar.model;
-      _year.text = existingCar.year.toString();
-      _price.text = existingCar.price.toString();
-      _km.text = existingCar.kilometres.toString();
-    }
+  // ========================================================
+  // RESPONSIVE LAYOUT
+  // ========================================================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cars For Sale'),
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+        actions: [
+          if (_selectedCar != null)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: () => setState(() => _selectedCar = null),
+            )
+        ],
+      ),
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title:
-          Text(existingCar == null ? 'Add Car' : 'Edit Car'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                _input(_make, 'Make'),
-                const SizedBox(height: 8),
-                _input(_model, 'Model'),
-                const SizedBox(height: 8),
-                _input(_year, 'Year', number: true),
-                const SizedBox(height: 8),
-                _input(_price, 'Price', number: true),
-                const SizedBox(height: 8),
-                _input(_km, 'Kilometres', number: true),
-                const SizedBox(height: 16),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.orange,
+        onPressed: () => _openAddDialog(),
+        child: const Icon(Icons.add),
+      ),
 
-                // Copy previous car button
-                if (existingCar == null)
-                  ElevatedButton(
-                    onPressed: _loadPreviousCarData,
-                    child: const Text("Copy Previous Car"),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _clearFields();
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-
-            if (existingCar != null)
-              TextButton(
-                onPressed: () async {
-                  await _db.carDao.deleteCar(existingCar);
-                  await _loadCars();
-                  Navigator.pop(context);
-                },
-                child: const Text('Delete'),
-              ),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange),
-              onPressed: () async {
-                if (_make.text.trim().isEmpty ||
-                    _model.text.trim().isEmpty) return;
-
-                final car = CarEntity(
-                  id: existingCar?.id ??
-                      DateTime.now().millisecondsSinceEpoch,
-                  make: _make.text.trim(),
-                  model: _model.text.trim(),
-                  year: int.tryParse(_year.text) ?? 0,
-                  price: int.tryParse(_price.text) ?? 0,
-                  kilometres: int.tryParse(_km.text) ?? 0,
-                );
-
-                if (existingCar == null) {
-                  await _db.carDao.insertCar(car);
-                  await _savePreviousCar(car);
-                } else {
-                  await _db.carDao.updateCar(car);
-                }
-
-                await _loadCars();
-                _clearFields();
-                Navigator.pop(context);
-              },
-              child: Text(existingCar == null ? 'Add' : 'Update'),
-            ),
-          ],
-        );
-      },
+      body: reactiveLayout(),
     );
   }
 
+  // ========================================================
+  // MASTER-DETAIL selector
+  // ========================================================
+  Widget reactiveLayout() {
+    final size = MediaQuery.of(context).size;
+    final width = size.width;
+    final height = size.height;
+
+    final isTablet = (width > height) && (width > 720);
+
+    if (isTablet) {
+      // TABLET VERSION
+      return Row(
+        children: [
+          Expanded(flex: 2, child: _buildListView()),
+          Expanded(flex: 3, child: _buildDetailsPage()),
+        ],
+      );
+    } else {
+      // PHONE VERSION
+      if (_selectedCar == null) {
+        return _buildListView();
+      } else {
+        return _buildDetailsPage();
+      }
+    }
+  }
+
+  // ========================================================
+  // LEFT PANEL: LIST VIEW
+  // ========================================================
+  Widget _buildListView() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              ElevatedButton(
+                onPressed: () async {
+                  final text = _quickAdd.text.trim();
+                  if (text.isEmpty) return;
+
+                  final car = CarEntity(
+                    id: DateTime.now().millisecondsSinceEpoch,
+                    make: text,
+                    model: "Unknown",
+                    year: 0,
+                    price: 0,
+                    kilometres: 0,
+                  );
+
+                  await _db.carDao.insertCar(car);
+                  _quickAdd.clear();
+                  await _loadCars();
+                },
+                child: const Text("Add item"),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _quickAdd,
+                  decoration: const InputDecoration(
+                    labelText: 'Quick Add (Make)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        Expanded(
+          child: ListView.builder(
+            itemCount: _cars.length,
+            itemBuilder: (context, index) {
+              final car = _cars[index];
+
+              return Card(
+                child: ListTile(
+                  title: Text('${car.year} ${car.make} ${car.model}'),
+                  subtitle:
+                  Text('Price: \$${car.price} | KM: ${car.kilometres}'),
+                  onTap: () {
+                    setState(() {
+                      _selectedCar = car;
+                    });
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========================================================
+  // RIGHT PANEL: DETAILS PAGE
+  // ========================================================
+  Widget _buildDetailsPage() {
+    if (_selectedCar == null) {
+      return const Center(
+        child: Text(
+          "Select a car to view details",
+          style: TextStyle(fontSize: 18, color: Colors.grey),
+        ),
+      );
+    }
+
+    // preload into controllers
+    _make.text = _selectedCar!.make;
+    _model.text = _selectedCar!.model;
+    _year.text = _selectedCar!.year.toString();
+    _price.text = _selectedCar!.price.toString();
+    _km.text = _selectedCar!.kilometres.toString();
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Text(
+              "Car Details",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange.shade700,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            _input(_make, "Make"),
+            const SizedBox(height: 12),
+
+            _input(_model, "Model"),
+            const SizedBox(height: 12),
+
+            _input(_year, "Year", number: true),
+            const SizedBox(height: 12),
+
+            _input(_price, "Price", number: true),
+            const SizedBox(height: 12),
+
+            _input(_km, "Kilometres", number: true),
+            const SizedBox(height: 20),
+
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final updated = CarEntity(
+                        id: _selectedCar!.id,
+                        make: _make.text,
+                        model: _model.text,
+                        year: int.tryParse(_year.text) ?? 0,
+                        price: int.tryParse(_price.text) ?? 0,
+                        kilometres: int.tryParse(_km.text) ?? 0,
+                      );
+
+                      await _db.carDao.updateCar(updated);
+                      _selectedCar = updated;
+                      await _loadCars();
+                      setState(() {});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                    child: const Text("Update"),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await _db.carDao.deleteCar(_selectedCar!);
+                      _selectedCar = null;
+                      await _loadCars();
+                      setState(() {});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text("Delete"),
+                  ),
+                )
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========================================================
+  // ADD DIALOG (PHONE ONLY, optional)
+  // ========================================================
+  void _openAddDialog() {
+    _clearFields();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Add Car"),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              _input(_make, 'Make'),
+              const SizedBox(height: 8),
+              _input(_model, 'Model'),
+              const SizedBox(height: 8),
+              _input(_year, 'Year', number: true),
+              const SizedBox(height: 8),
+              _input(_price, 'Price', number: true),
+              const SizedBox(height: 8),
+              _input(_km, 'Kilometres', number: true),
+              const SizedBox(height: 16),
+
+              ElevatedButton(
+                onPressed: _loadPreviousCarData,
+                child: const Text("Copy Previous Car"),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final car = CarEntity(
+                id: DateTime.now().millisecondsSinceEpoch,
+                make: _make.text,
+                model: _model.text,
+                year: int.tryParse(_year.text) ?? 0,
+                price: int.tryParse(_price.text) ?? 0,
+                kilometres: int.tryParse(_km.text) ?? 0,
+              );
+
+              await _db.carDao.insertCar(car);
+              await _savePreviousCar(car);
+              await _loadCars();
+
+              Navigator.pop(context);
+            },
+            child: const Text("Add"),
+          )
+        ],
+      ),
+    );
+  }
+
+  // ========================================================
+  // PREVIOUS CAR
+  // ========================================================
   Future<void> _savePreviousCar(CarEntity car) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setString('prev_make', car.make);
@@ -163,101 +353,9 @@ class _CarsPageState extends State<CarsPage> {
     });
   }
 
-  // -----------------------
-  // UI
-  // -----------------------
-  @override
-  Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 600;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cars For Sale'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.orange,
-        onPressed: () => _showAddCarDialog(),
-        child: const Icon(Icons.add),
-      ),
-
-      body: Row(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-
-                // QUICK ADD
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () async {
-                          final text = _quickAdd.text.trim();
-                          if (text.isEmpty) return;
-
-                          final car = CarEntity(
-                            id: DateTime.now().millisecondsSinceEpoch,
-                            make: text,
-                            model: "Unknown",
-                            year: 0,
-                            price: 0,
-                            kilometres: 0,
-                          );
-
-                          await _db.carDao.insertCar(car);
-                          _quickAdd.clear();
-                          await _loadCars();
-                        },
-                        child: const Text("Add item"),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _quickAdd,
-                          decoration: const InputDecoration(
-                            labelText: 'Quick Add (Make)',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _cars.length,
-                    itemBuilder: (context, index) {
-                      final car = _cars[index];
-
-                      return Card(
-                        child: ListTile(
-                          title: Text('${car.year} ${car.make} ${car.model}'),
-                          subtitle:
-                          Text('Price: \$${car.price} | KM: ${car.kilometres}'),
-                          onTap: () {
-                            _showAddCarDialog(existingCar: car);
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ========================================================
+  // HELPERS
+  // ========================================================
   Widget _input(TextEditingController c, String label,
       {bool number = false}) {
     return TextField(
