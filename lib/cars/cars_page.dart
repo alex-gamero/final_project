@@ -14,7 +14,7 @@ class _CarsPageState extends State<CarsPage> {
   late AppDatabase _db;
   List<CarEntity> _cars = [];
 
-  CarEntity? _selectedCar; // ⭐ MODO MASTER–DETAIL
+  CarEntity? _selectedCar;
 
   // Controllers
   final _make = TextEditingController();
@@ -44,6 +44,110 @@ class _CarsPageState extends State<CarsPage> {
   }
 
   // ========================================================
+  // SNACKBAR - Show success message
+  // ========================================================
+  void _showSuccessSnackbar(String message) {
+    final snackBar = SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.green,
+      action: SnackBarAction(
+        label: "OK",
+        textColor: Colors.white,
+        onPressed: () {
+          // Action when pressed
+        },
+      ),
+      duration: const Duration(seconds: 3),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  // ========================================================
+  // SNACKBAR - Show error message
+  // ========================================================
+  void _showErrorSnackbar(String message) {
+    final snackBar = SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+      action: SnackBarAction(
+        label: "Dismiss",
+        textColor: Colors.white,
+        onPressed: () {
+          // Action when pressed
+        },
+      ),
+      duration: const Duration(seconds: 3),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  // ========================================================
+  // ALERT DIALOG - Show instructions
+  // ========================================================
+  void _showInstructionsDialog() {
+    showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("How to Use This App"),
+          content: const SingleChildScrollView(
+            child: Text(
+              "Instructions:\n\n"
+                  "1. Use the 'Add' button to create new car listings\n"
+                  "2. Tap on any car in the list to view/edit details\n"
+                  "3. Use 'Update' to save changes or 'Delete' to remove\n"
+                  "4. Quick Add field lets you quickly add cars with just the make\n"
+                  "5. Use 'Copy Previous Car' to duplicate the last added car's data",
+            ),
+          ),
+          actions: [
+            OutlinedButton(
+              child: const Text("Got it!"),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ========================================================
+  // ALERT DIALOG - Show statistics
+  // ========================================================
+  void _showStatisticsDialog() {
+    final totalCars = _cars.length;
+    final averagePrice = totalCars > 0
+        ? _cars.map((car) => car.price).reduce((a, b) => a + b) / totalCars
+        : 0;
+
+    showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Cars Statistics"),
+          content: Text(
+            "Current Statistics:\n\n"
+                "Total Cars: $totalCars\n"
+                "Average Price: \$${averagePrice.toStringAsFixed(2)}\n"
+                "Selected Car: ${_selectedCar?.make ?? 'None'}\n\n"
+                "This shows the current state of your car inventory.",
+          ),
+          actions: [
+            OutlinedButton(
+              child: const Text("Close"),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ========================================================
   // RESPONSIVE LAYOUT
   // ========================================================
   @override
@@ -54,18 +158,37 @@ class _CarsPageState extends State<CarsPage> {
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
         actions: [
+          // Instructions button
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: _showInstructionsDialog,
+          ),
+          // Statistics button
+          IconButton(
+            icon: const Icon(Icons.analytics),
+            onPressed: _showStatisticsDialog,
+          ),
           if (_selectedCar != null)
             IconButton(
               icon: const Icon(Icons.clear),
-              onPressed: () => setState(() => _selectedCar = null),
+              onPressed: () {
+                setState(() => _selectedCar = null);
+                _showSuccessSnackbar("Selection cleared");
+              },
             )
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.orange,
-        onPressed: () => _openAddDialog(),
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Main add button
+          FloatingActionButton(
+            backgroundColor: Colors.orange,
+            onPressed: () => _openAddDialog(),
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
 
       body: reactiveLayout(),
@@ -114,7 +237,10 @@ class _CarsPageState extends State<CarsPage> {
               ElevatedButton(
                 onPressed: () async {
                   final text = _quickAdd.text.trim();
-                  if (text.isEmpty) return;
+                  if (text.isEmpty) {
+                    _showErrorSnackbar("Please enter a car make first!");
+                    return;
+                  }
 
                   final car = CarEntity(
                     id: DateTime.now().millisecondsSinceEpoch,
@@ -128,6 +254,7 @@ class _CarsPageState extends State<CarsPage> {
                   await _db.carDao.insertCar(car);
                   _quickAdd.clear();
                   await _loadCars();
+                  _showSuccessSnackbar("Car '$text' added successfully!");
                 },
                 child: const Text("Add item"),
               ),
@@ -139,6 +266,32 @@ class _CarsPageState extends State<CarsPage> {
                     labelText: 'Quick Add (Make)',
                     border: OutlineInputBorder(),
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Button to show alert dialog
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _showStatisticsDialog,
+                  child: const Text("Show Statistics"),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    _showSuccessSnackbar("List refreshed! Total cars: ${_cars.length}");
+                  },
+                  child: const Text("Refresh List"),
                 ),
               ),
             ],
@@ -222,6 +375,21 @@ class _CarsPageState extends State<CarsPage> {
             _input(_km, "Kilometres", number: true),
             const SizedBox(height: 20),
 
+            // Additional buttons for notifications
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _showInstructionsDialog,
+                    child: const Text("Help"),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
             Row(
               children: [
                 Expanded(
@@ -240,6 +408,7 @@ class _CarsPageState extends State<CarsPage> {
                       _selectedCar = updated;
                       await _loadCars();
                       setState(() {});
+                      _showSuccessSnackbar("Car updated successfully!");
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
@@ -251,10 +420,38 @@ class _CarsPageState extends State<CarsPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
-                      await _db.carDao.deleteCar(_selectedCar!);
-                      _selectedCar = null;
-                      await _loadCars();
-                      setState(() {});
+                      // Show confirmation dialog before delete
+                      showDialog<String>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text("Confirm Delete"),
+                            content: Text(
+                                "Are you sure you want to delete ${_selectedCar!.make} ${_selectedCar!.model}? This action cannot be undone."),
+                            actions: [
+                              OutlinedButton(
+                                child: const Text("Cancel"),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _showSuccessSnackbar("Delete cancelled");
+                                },
+                              ),
+                              OutlinedButton(
+                                child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  await _db.carDao.deleteCar(_selectedCar!);
+                                  final carName = "${_selectedCar!.make} ${_selectedCar!.model}";
+                                  _selectedCar = null;
+                                  await _loadCars();
+                                  setState(() {});
+                                  _showSuccessSnackbar("Car '$carName' deleted successfully!");
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -303,11 +500,18 @@ class _CarsPageState extends State<CarsPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+            },
             child: const Text("Cancel"),
           ),
           ElevatedButton(
             onPressed: () async {
+              if (_make.text.isEmpty || _model.text.isEmpty) {
+                _showErrorSnackbar("Please fill in all required fields!");
+                return;
+              }
+
               final car = CarEntity(
                 id: DateTime.now().millisecondsSinceEpoch,
                 make: _make.text,
@@ -322,6 +526,7 @@ class _CarsPageState extends State<CarsPage> {
               await _loadCars();
 
               Navigator.pop(context);
+              _showSuccessSnackbar("Car '${car.make} ${car.model}' added successfully!");
             },
             child: const Text("Add"),
           )
@@ -351,6 +556,7 @@ class _CarsPageState extends State<CarsPage> {
       _price.text = (prefs.getInt('prev_price') ?? 0).toString();
       _km.text = (prefs.getInt('prev_km') ?? 0).toString();
     });
+    _showSuccessSnackbar("Previous car data loaded!");
   }
 
   // ========================================================
