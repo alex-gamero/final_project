@@ -1,91 +1,14 @@
-//updated
 /// purchase_offer_page.dart
 ///
-/// Purchase Offer screen for the Vehicle Sales Management project.
+/// Purchase Offer screen using Floor ORM (consistent with Cars page)
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path; // Add alias to avoid conflict
-import 'package:sqflite/sqflite.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Model class for a purchase offer.
-class PurchaseOffer {
-  int? id;
-  String title;
-  String details;
-  DateTime createdAt;
-
-  PurchaseOffer({this.id, required this.title, required this.details, DateTime? createdAt})
-      : createdAt = createdAt ?? DateTime.now();
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'details': details,
-      'createdAt': createdAt.millisecondsSinceEpoch,
-    };
-  }
-
-  static PurchaseOffer fromMap(Map<String, dynamic> m) {
-    return PurchaseOffer(
-      id: m['id'] as int?,
-      title: m['title'] as String,
-      details: m['details'] as String,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(m['createdAt'] as int),
-    );
-  }
-}
-
-/// Helper for SQLite database operations.
-class DBHelper {
-  static const _dbName = 'purchase_offers.db';
-  static const _dbVersion = 1;
-  static const _table = 'offers';
-
-  DBHelper._();
-  static final DBHelper instance = DBHelper._();
-
-  Database? _db;
-
-  Future<Database> get database async {
-    if (_db != null) return _db!;
-    final databasesPath = await getDatabasesPath();
-    final dbPath = path.join(databasesPath, _dbName); // Use aliased path
-    _db = await openDatabase(
-      dbPath,
-      version: _dbVersion,
-      onCreate: (db, version) async {
-        await db.execute('''
-        CREATE TABLE $_table (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
-          details TEXT NOT NULL,
-          createdAt INTEGER NOT NULL
-        )
-        ''');
-      },
-    );
-    return _db!;
-  }
-
-  Future<int> insertOffer(PurchaseOffer offer) async {
-    final db = await database;
-    return await db.insert(_table, offer.toMap());
-  }
-
-  Future<List<PurchaseOffer>> getOffers() async {
-    final db = await database;
-    final rows = await db.query(_table, orderBy: 'createdAt DESC');
-    return rows.map((r) => PurchaseOffer.fromMap(r)).toList();
-  }
-
-  Future<int> deleteOffer(int id) async {
-    final db = await database;
-    return await db.delete(_table, where: 'id = ?', whereArgs: [id]);
-  }
-}
+// Import your Floor database and entities
+import 'purchase_offer_database.dart';
+import 'purchase_offer_entity.dart';
 
 /// Simple localized strings used by this screen.
 class L10n {
@@ -119,61 +42,138 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
   List<PurchaseOffer> _offers = [];
   PurchaseOffer? _selected;
 
+  late PurchaseOfferDatabase _database;
   static const _draftKey = 'purchase_offer_draft';
 
   @override
   void initState() {
     super.initState();
+    _initializeDatabase();
+  }
+
+  Future<void> _initializeDatabase() async {
+    _database = await $FloorPurchaseOfferDatabase
+        .databaseBuilder('purchase_offer_database.db')
+        .build();
     _loadOffers();
     _loadDraft();
   }
 
   Future<void> _loadOffers() async {
-    final offers = await DBHelper.instance.getOffers();
-    setState(() {
-      _offers = offers;
-    });
+    try {
+      final offers = await _database.offerDao.getAllOffers();
+      print('Loaded ${offers.length} offers from DB');
+      setState(() {
+        _offers = offers;
+      });
+    } catch (e) {
+      print('Error loading offers: $e');
+      setState(() {
+        _offers = [];
+      });
+    }
   }
 
   Future<void> _loadDraft() async {
-    final draft = await _storage.read(key: _draftKey);
-    if (draft != null && draft.isNotEmpty) {
-      final parts = draft.split('\n|DETAILS|\n');
-      _titleController.text = parts[0];
-      if (parts.length > 1) _detailsController.text = parts[1];
+    try {
+      final draft = await _storage.read(key: _draftKey);
+      if (draft != null && draft.isNotEmpty) {
+        final parts = draft.split('\n|DETAILS|\n');
+        _titleController.text = parts[0];
+        if (parts.length > 1) _detailsController.text = parts[1];
+      }
+    } catch (e) {
+      print('Error loading draft: $e');
     }
   }
 
   Future<void> _saveDraft() async {
-    final draft = '${_titleController.text}\n|DETAILS|\n${_detailsController.text}';
-    await _storage.write(key: _draftKey, value: draft);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(L10n(Localizations.localeOf(context)).draftSaved))
-      );
+    try {
+      final draft = '${_titleController.text}\n|DETAILS|\n${_detailsController.text}';
+      await _storage.write(key: _draftKey, value: draft);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(L10n(Localizations.localeOf(context)).draftSaved))
+        );
+      }
+    } catch (e) {
+      print('Error saving draft: $e');
     }
   }
 
   Future<void> _addOffer() async {
-    if (!_formKey.currentState!.validate()) return;
-    final offer = PurchaseOffer(
-        title: _titleController.text.trim(),
-        details: _detailsController.text.trim()
-    );
-    final id = await DBHelper.instance.insertOffer(offer);
-    offer.id = id;
-    setState(() {
-      _offers.insert(0, offer);
-      _titleController.clear();
-      _detailsController.clear();
-    });
-    await _storage.delete(key: _draftKey);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Offer saved'))
-      );
+    if (!_formKey.currentState!.validate()) {
+      print('❌ Form validation failed');
+      return;
     }
+
+    print('✅ Form validated successfully');
+    print('📝 Title: ${_titleController.text}');
+    print('📝 Details: ${_detailsController.text}');
+
+    final offer = PurchaseOffer(
+      title: _titleController.text.trim(),
+      details: _detailsController.text.trim(),
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    try {
+      print('🔄 Starting database insert...');
+      final id = await _database.offerDao.insertOffer(offer);
+      print('✅ Offer inserted with ID: $id');
+
+      // Create the saved offer with the actual ID
+      final savedOffer = PurchaseOffer(
+        id: id,
+        title: offer.title,
+        details: offer.details,
+        createdAt: offer.createdAt,
+      );
+
+      print('🔄 Updating UI with new offer...');
+      setState(() {
+        _offers.insert(0, savedOffer);
+        _titleController.clear();
+        _detailsController.clear();
+      });
+
+      // Clear draft after successful save
+      await _storage.delete(key: _draftKey);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Offer saved successfully!')),
+        );
+      }
+
+      print('✅ Offer added to list. Total offers: ${_offers.length}');
+
+    } catch (e) {
+      print('❌ Error saving offer: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error saving offer: $e')),
+        );
+      }
+    }
+  }
+
+  // Test method to add offer without database
+  void _testAddOffer() {
+    final testOffer = PurchaseOffer(
+      id: DateTime.now().millisecondsSinceEpoch,
+      title: 'Test Offer ${DateTime.now().second}',
+      details: 'This is a test offer added directly to the list',
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    setState(() {
+      _offers.insert(0, testOffer);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('✅ Test offer added directly to list!')),
+    );
   }
 
   void _showInstructions() {
@@ -205,18 +205,22 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
           ),
           TextButton(
             onPressed: () async {
-              await DBHelper.instance.deleteOffer(offer.id!);
-              if (mounted) {
-                setState(() {
-                  _offers.removeWhere((o) => o.id == offer.id);
-                  if (_selected?.id == offer.id) _selected = null;
-                });
-              }
-              Navigator.of(context).pop();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Offer deleted'))
-                );
+              try {
+                await _database.offerDao.deleteOffer(offer.id!);
+                if (mounted) {
+                  setState(() {
+                    _offers.removeWhere((o) => o.id == offer.id);
+                    if (_selected?.id == offer.id) _selected = null;
+                  });
+                }
+                Navigator.of(context).pop();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Offer deleted'))
+                  );
+                }
+              } catch (e) {
+                print('Error deleting offer: $e');
               }
             },
             child: const Text('Delete'),
@@ -250,17 +254,33 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
                 children: [
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Offer Title'),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a title' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Offer Title',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Please enter a title';
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _detailsController,
-                    decoration: const InputDecoration(labelText: 'Details'),
+                    decoration: const InputDecoration(
+                      labelText: 'Details',
+                      border: OutlineInputBorder(),
+                    ),
                     maxLines: 3,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter details' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Please enter details';
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       ElevatedButton.icon(
@@ -272,23 +292,25 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
                       OutlinedButton.icon(
                         onPressed: _saveDraft,
                         icon: const Icon(Icons.lock),
-                        label: const Text('Save Draft (secure)'),
+                        label: const Text('Save Draft'),
                       ),
                       const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('This is a Snackbar example'))
-                          );
-                        },
-                        child: const Text('Test Snackbar'),
+                      // Test button
+                      OutlinedButton(
+                        onPressed: _testAddOffer,
+                        child: const Text('Test Add'),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            Text(
+              'Offers List (${_offers.length} items)',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
@@ -321,18 +343,31 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
         children: [
           const Padding(
             padding: EdgeInsets.all(12.0),
-            child: Text('Offers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text('Saved Offers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
           const Divider(height: 1),
           Expanded(
             child: _offers.isEmpty
-                ? const Center(child: Text('No offers yet'))
+                ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.list_alt, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('No offers yet', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  SizedBox(height: 8),
+                  Text('Add your first offer using the form above',
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            )
                 : ListView.separated(
               itemCount: _offers.length,
               separatorBuilder: (BuildContext context, int index) => const Divider(height: 1),
               itemBuilder: (BuildContext context, int index) {
                 final offer = _offers[index];
                 return ListTile(
+                  leading: const Icon(Icons.local_offer),
                   title: Text(offer.title),
                   subtitle: Text(
                       offer.details,
@@ -340,7 +375,7 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
                       overflow: TextOverflow.ellipsis
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete_forever),
+                    icon: const Icon(Icons.delete_forever, color: Colors.red),
                     onPressed: () => _confirmDelete(offer),
                   ),
                   onTap: () {
@@ -368,7 +403,16 @@ class _PurchaseOfferPageState extends State<PurchaseOfferPage> {
 
   Widget _buildDetailsArea() {
     if (_selected == null) {
-      return const Center(child: Text('Select an offer to view details'));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.info_outline, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('Select an offer to view details', style: TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
+        ),
+      );
     }
     return OfferDetailView(offer: _selected!);
   }
@@ -410,10 +454,17 @@ class OfferDetailView extends StatelessWidget {
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
             ),
             const SizedBox(height: 8),
-            Text('Created: ${offer.createdAt}'),
+            Text('Created: ${DateTime.fromMillisecondsSinceEpoch(offer.createdAt)}'),
             const SizedBox(height: 12),
+            const Text('Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Expanded(
-                child: SingleChildScrollView(child: Text(offer.details))
+                child: SingleChildScrollView(
+                  child: Text(
+                    offer.details,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                )
             ),
           ],
         ),
