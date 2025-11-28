@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'purchase_offers/purchase_offers_page.dart';
+import 'cars/cars_page.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -81,8 +83,12 @@ class HomePage extends StatelessWidget {
                     Icons.directions_car,
                     Colors.orange,
                         () {
-                      // Navigate to Cars for Sale page
-                      _showComingSoonSnackbar(context, 'Cars');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CarsPage(),
+                        ),
+                      );
                     },
                   ),
                   _buildFeatureCard(
