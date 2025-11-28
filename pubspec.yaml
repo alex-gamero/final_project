@@ -45,6 +45,7 @@ dependencies:
 
   # Plugin used to securely store sensitive data in key-value pairs
   flutter_secure_storage: ^9.2.2
+  dartdoc: ^8.0.7
 
 dev_dependencies:
   flutter_test:

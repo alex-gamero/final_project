@@ -5,27 +5,52 @@ import 'car_entity.dart';
 import '../localization/app_localizations.dart';
 import '../main.dart';
 
+/// A page for managing cars inventory with CRUD operations and internationalization support.
+///
+/// This widget provides a responsive interface for adding, viewing, updating, and deleting
+/// car listings with support for both phone and tablet layouts.
 class CarsPage extends StatefulWidget {
+  /// Creates a [CarsPage] widget.
   const CarsPage({super.key});
 
   @override
   State<CarsPage> createState() => _CarsPageState();
 }
 
+/// The state class for [CarsPage] that manages the car inventory and user interface.
+///
+/// This class handles database operations, form management, and responsive layout
+/// for the cars management functionality.
 class _CarsPageState extends State<CarsPage> {
+  /// The database instance for car data persistence.
   late AppDatabase _db;
+
+  /// List of cars currently loaded from the database.
   List<CarEntity> _cars = [];
 
+  /// The currently selected car for viewing or editing details.
   CarEntity? _selectedCar;
 
+  /// Encrypted shared preferences instance for secure data storage.
   final EncryptedSharedPreferences _encryptedPrefs = EncryptedSharedPreferences();
 
   // Controllers
+  /// Text editing controller for the car make input field.
   final _make = TextEditingController();
+
+  /// Text editing controller for the car model input field.
   final _model = TextEditingController();
+
+  /// Text editing controller for the car year input field.
   final _year = TextEditingController();
+
+  /// Text editing controller for the car price input field.
   final _price = TextEditingController();
+
+  /// Text editing controller for the car kilometres input field.
   final _km = TextEditingController();
+
+  /// Text editing controller for the quick add input field.
   final _quickAdd = TextEditingController();
 
   @override
@@ -35,6 +60,7 @@ class _CarsPageState extends State<CarsPage> {
     _loadRecentSearch();
   }
 
+  /// Initializes the database connection and loads initial car data.
   Future<void> _initDb() async {
     _db = await $FloorAppDatabase
         .databaseBuilder('cars_database.db')
@@ -43,6 +69,7 @@ class _CarsPageState extends State<CarsPage> {
     _loadCars();
   }
 
+  /// Loads all cars from the database and updates the UI.
   Future<void> _loadCars() async {
     final list = await _db.carDao.getAllCars();
     setState(() => _cars = list);
@@ -51,6 +78,11 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // SNACKBAR - Show success message
   // ========================================================
+
+  /// Displays a success snackbar with a green background.
+  ///
+  /// Parameters:
+  /// - [message]: The success message to display
   void _showSuccessSnackbar(String message) {
     final snackBar = SnackBar(
       content: Text(message),
@@ -70,6 +102,11 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // SNACKBAR - Show error message
   // ========================================================
+
+  /// Displays an error snackbar with a red background.
+  ///
+  /// Parameters:
+  /// - [message]: The error message to display
   void _showErrorSnackbar(String message) {
     final snackBar = SnackBar(
       content: Text(message),
@@ -89,6 +126,8 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // ALERT DIALOG - Show instructions
   // ========================================================
+
+  /// Shows an alert dialog with application usage instructions.
   void _showInstructionsDialog() {
     showDialog<String>(
       context: context,
@@ -114,6 +153,8 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // ALERT DIALOG - Show statistics
   // ========================================================
+
+  /// Shows an alert dialog with car inventory statistics.
   void _showStatisticsDialog() {
     final totalCars = _cars.length;
     final averagePrice = totalCars > 0
@@ -151,6 +192,7 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // RESPONSIVE LAYOUT
   // ========================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -204,6 +246,12 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // MASTER-DETAIL selector
   // ========================================================
+
+  /// Creates a responsive layout that adapts to phone and tablet screen sizes.
+  ///
+  /// Returns:
+  /// - For tablets: A row with list view and details side by side
+  /// - For phones: Either the list view or details view based on selection
   Widget reactiveLayout() {
     final size = MediaQuery.of(context).size;
     final width = size.width;
@@ -232,6 +280,8 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // LEFT PANEL: LIST VIEW
   // ========================================================
+
+  /// Builds the list view panel showing all cars with quick add functionality.
   Widget _buildListView() {
     return Column(
       children: [
@@ -344,6 +394,8 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // RIGHT PANEL: DETAILS PAGE
   // ========================================================
+
+  /// Builds the details panel for viewing and editing selected car information.
   Widget _buildDetailsPage() {
     if (_selectedCar == null) {
       return Center(
@@ -498,6 +550,8 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // ADD DIALOG (PHONE ONLY, optional)
   // ========================================================
+
+  /// Shows a dialog for adding a new car to the inventory.
   void _openAddDialog() {
     _clearFields();
 
@@ -571,6 +625,11 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   // PREVIOUS CAR
   // ========================================================
+
+  /// Saves the current car data to encrypted shared preferences for future use.
+  ///
+  /// Parameters:
+  /// - [car]: The car entity to save as previous car data
   Future<void> _savePreviousCar(CarEntity car) async {
     await _encryptedPrefs.setString('prev_make', car.make);
     await _encryptedPrefs.setString('prev_model', car.model);
@@ -579,6 +638,7 @@ class _CarsPageState extends State<CarsPage> {
     await _encryptedPrefs.setString('prev_km', car.kilometres.toString());
   }
 
+  /// Loads previously saved car data from encrypted shared preferences into the form.
   Future<void> _loadPreviousCarData() async {
     final prevMake = await _encryptedPrefs.getString('prev_make');
     final prevModel = await _encryptedPrefs.getString('prev_model');
@@ -600,14 +660,17 @@ class _CarsPageState extends State<CarsPage> {
   // SAVE RECENT SEARCH
   // ========================================================
 
-  // Method for saving recent searches in the Quick Add field
+  /// Saves the recent search text to encrypted shared preferences.
+  ///
+  /// Parameters:
+  /// - [searchText]: The text to save as recent search
   Future<void> _saveRecentSearch(String searchText) async {
     if (searchText.trim().isNotEmpty) {
       await _encryptedPrefs.setString('recent_search', searchText.trim());
     }
   }
 
-  // Method for loading recent search
+  /// Loads the recent search text from encrypted shared preferences.
   Future<void> _loadRecentSearch() async {
     final recentSearch = await _encryptedPrefs.getString('recent_search');
     if (recentSearch.isNotEmpty) {
@@ -619,45 +682,58 @@ class _CarsPageState extends State<CarsPage> {
   // INTERNATIONALIZATION
   // ========================================================
 
-  // Method to change the language
+  /// Changes the application language to the specified locale.
+  ///
+  /// Parameters:
+  /// - [locale]: The new locale to switch to
   void _changeLanguage(Locale locale) {
     MyApp.setLocale(context, locale);
   }
 
-  // Method for displaying language selection dialog
-    void _showLanguageDialog() {
-      showDialog<String>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(AppLocalizations.of(context)!.translate('language')),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  title: Text(AppLocalizations.of(context)!.translate('english')),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _changeLanguage(const Locale('en'));
-                  },
-                ),
-                ListTile(
-                  title: Text(AppLocalizations.of(context)!.translate('spanish')),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _changeLanguage(const Locale('es'));
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    }
+  /// Shows a dialog for selecting the application language.
+  void _showLanguageDialog() {
+    showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.translate('language')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(AppLocalizations.of(context)!.translate('english')),
+                onTap: () {
+                  Navigator.pop(context);
+                  _changeLanguage(const Locale('en'));
+                },
+              ),
+              ListTile(
+                title: Text(AppLocalizations.of(context)!.translate('spanish')),
+                onTap: () {
+                  Navigator.pop(context);
+                  _changeLanguage(const Locale('es'));
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   // ========================================================
   // HELPERS
   // ========================================================
+
+  /// Creates a standardized text input field with consistent styling.
+  ///
+  /// Parameters:
+  /// - [c]: The text editing controller for the input field
+  /// - [label]: The label text for the input field
+  /// - [number]: Whether the input should use number keyboard
+  ///
+  /// Returns:
+  /// A styled [TextField] widget
   Widget _input(TextEditingController c, String label,
       {bool number = false}) {
     return TextField(
@@ -670,6 +746,7 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
+  /// Clears all text input fields in the form.
   void _clearFields() {
     _make.clear();
     _model.clear();

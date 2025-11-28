@@ -4,13 +4,32 @@ import 'purchase_offers/purchase_offers_page.dart';
 import 'cars/cars_page.dart';
 import 'localization/app_localizations.dart';
 
+/// The main entry point of the Vehicle Sales Management application.
+///
+/// This function initializes and runs the Flutter application by calling
+/// [runApp] with an instance of [MyApp].
 void main() {
   runApp(const MyApp());
 }
 
+/// The root widget of the Vehicle Sales Management application.
+///
+/// This [StatefulWidget] manages the application's locale state and provides
+/// internationalization support for English and Spanish languages.
+///
 class MyApp extends StatefulWidget {
+  /// Creates a [MyApp] widget.
   const MyApp({super.key});
 
+  /// Changes the application's current locale.
+  ///
+  /// This static method allows any widget in the application to change
+  /// the language by providing a new [Locale] object.
+  ///
+  /// Parameters:
+  /// - [context]: The build context used to find the current state
+  /// - [newLocale]: The new locale to switch to (either 'en' or 'es')
+  ///
   static void setLocale(BuildContext context, Locale newLocale) {
     _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
     state?.changeLanguage(newLocale);
@@ -20,9 +39,25 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+/// The state class for [MyApp] that manages the application's locale and theme.
+///
+/// This class handles language switching and provides the material app
+/// configuration with internationalization support.
 class _MyAppState extends State<MyApp> {
+  /// The current locale of the application.
+  ///
+  /// Defaults to English ('en') but can be changed to Spanish ('es')
+  /// through the [changeLanguage] method.
   Locale _locale = const Locale('en');
 
+  /// Changes the application's current language.
+  ///
+  /// Updates the [_locale] state variable and triggers a rebuild of the
+  /// widget tree to reflect the language change.
+  ///
+  /// Parameters:
+  /// - [newLocale]: The new locale to switch to
+  ///
   void changeLanguage(Locale newLocale) {
     setState(() {
       _locale = newLocale;
@@ -54,7 +89,13 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+/// The home page widget that displays the main navigation dashboard.
+///
+/// This stateless widget provides a grid of feature cards that allow users
+/// to navigate to different sections of the Vehicle Sales Management app,
+/// including Customers, Cars, Boats, and Purchase Offers.
 class HomePage extends StatelessWidget {
+  /// Creates a [HomePage] widget.
   const HomePage({super.key});
 
   @override
@@ -159,6 +200,22 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  /// Builds a feature card for the home page dashboard.
+  ///
+  /// Creates a visually appealing card with an icon, title, and subtitle
+  /// that users can tap to navigate to different sections of the app.
+  ///
+  /// Parameters:
+  /// - [context]: The build context
+  /// - [title]: The main title displayed on the card
+  /// - [subtitle]: The descriptive text below the title
+  /// - [icon]: The icon to display on the card
+  /// - [color]: The primary color theme for the card
+  /// - [onTap]: The callback function executed when the card is tapped
+  ///
+  /// Returns:
+  /// A [Card] widget with an [InkWell] for tap interactions.
+  ///
   Widget _buildFeatureCard(
       BuildContext context,
       String title,
@@ -212,6 +269,15 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  /// Shows a snackbar notification for features that are not yet implemented.
+  ///
+  /// Displays a temporary message at the bottom of the screen indicating
+  /// that the requested feature is coming soon.
+  ///
+  /// Parameters:
+  /// - [context]: The build context used to show the snackbar
+  /// - [feature]: The name of the feature that is coming soon
+  ///
   void _showComingSoonSnackbar(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
