@@ -5,13 +5,15 @@ class CustomerItem {
   @primaryKey
   final int id;
 
-  final String name;
+  final String firstName;
+  final String lastName;
   final String phone;
   final String email;
 
   CustomerItem({
     required this.id,
-    required this.name,
+    required this.firstName,
+    required this.lastName,
     required this.phone,
     required this.email,
   });

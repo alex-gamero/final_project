@@ -96,7 +96,7 @@ class _$AppDatabase extends AppDatabase {
       },
       onCreate: (database, version) async {
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `CustomerItem` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `phone` TEXT NOT NULL, `email` TEXT NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `CustomerItem` (`id` INTEGER NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `phone` TEXT NOT NULL, `email` TEXT NOT NULL, PRIMARY KEY (`id`))');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -120,7 +120,19 @@ class _$CustomerDao extends CustomerDao {
             'CustomerItem',
             (CustomerItem item) => <String, Object?>{
                   'id': item.id,
-                  'name': item.name,
+                  'firstName': item.firstName,
+                  'lastName': item.lastName,
+                  'phone': item.phone,
+                  'email': item.email
+                }),
+        _customerItemUpdateAdapter = UpdateAdapter(
+            database,
+            'CustomerItem',
+            ['id'],
+            (CustomerItem item) => <String, Object?>{
+                  'id': item.id,
+                  'firstName': item.firstName,
+                  'lastName': item.lastName,
                   'phone': item.phone,
                   'email': item.email
                 }),
@@ -130,7 +142,8 @@ class _$CustomerDao extends CustomerDao {
             ['id'],
             (CustomerItem item) => <String, Object?>{
                   'id': item.id,
-                  'name': item.name,
+                  'firstName': item.firstName,
+                  'lastName': item.lastName,
                   'phone': item.phone,
                   'email': item.email
                 });
@@ -143,14 +156,18 @@ class _$CustomerDao extends CustomerDao {
 
   final InsertionAdapter<CustomerItem> _customerItemInsertionAdapter;
 
+  final UpdateAdapter<CustomerItem> _customerItemUpdateAdapter;
+
   final DeletionAdapter<CustomerItem> _customerItemDeletionAdapter;
 
   @override
   Future<List<CustomerItem>> findAllCustomers() async {
-    return _queryAdapter.queryList('SELECT * FROM CustomerItem',
+    return _queryAdapter.queryList(
+        'SELECT * FROM CustomerItem ORDER BY lastName, firstName',
         mapper: (Map<String, Object?> row) => CustomerItem(
             id: row['id'] as int,
-            name: row['name'] as String,
+            firstName: row['firstName'] as String,
+            lastName: row['lastName'] as String,
             phone: row['phone'] as String,
             email: row['email'] as String));
   }
@@ -159,6 +176,11 @@ class _$CustomerDao extends CustomerDao {
   Future<void> insertCustomer(CustomerItem customer) async {
     await _customerItemInsertionAdapter.insert(
         customer, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> updateCustomer(CustomerItem customer) async {
+    await _customerItemUpdateAdapter.update(customer, OnConflictStrategy.abort);
   }
 
   @override
