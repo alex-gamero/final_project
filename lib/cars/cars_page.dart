@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:encrypted_shared_preferences/encrypted_shared_preferences.dart';
 import 'app_database.dart';
 import 'car_entity.dart';
+import '../localization/app_localizations.dart';
+import '../main.dart';
 
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
@@ -73,7 +75,7 @@ class _CarsPageState extends State<CarsPage> {
       content: Text(message),
       backgroundColor: Colors.red,
       action: SnackBarAction(
-        label: "Dismiss",
+        label: AppLocalizations.of(context)!.translate('close'),
         textColor: Colors.white,
         onPressed: () {
           // Action when pressed
@@ -92,20 +94,13 @@ class _CarsPageState extends State<CarsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("How to Use This App"),
-          content: const SingleChildScrollView(
-            child: Text(
-              "Instructions:\n\n"
-                  "1. Use the 'Add' button to create new car listings\n"
-                  "2. Tap on any car in the list to view/edit details\n"
-                  "3. Use 'Update' to save changes or 'Delete' to remove\n"
-                  "4. Quick Add field lets you quickly add cars with just the make\n"
-                  "5. Use 'Copy Previous Car' to duplicate the last added car's data",
-            ),
+          title: Text(AppLocalizations.of(context)!.translate('instructions_title')),
+          content: SingleChildScrollView(
+            child: Text(AppLocalizations.of(context)!.translate('instructions_content')),
           ),
           actions: [
             OutlinedButton(
-              child: const Text("Got it!"),
+              child: Text(AppLocalizations.of(context)!.translate('got_it')),
               onPressed: () {
                 Navigator.pop(context);
               },
@@ -129,17 +124,20 @@ class _CarsPageState extends State<CarsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Cars Statistics"),
+          title: Text(AppLocalizations.of(context)!.translate('statistics_title')),
           content: Text(
-            "Current Statistics:\n\n"
-                "Total Cars: $totalCars\n"
-                "Average Price: \$${averagePrice.toStringAsFixed(2)}\n"
-                "Selected Car: ${_selectedCar?.make ?? 'None'}\n\n"
-                "This shows the current state of your car inventory.",
+            AppLocalizations.of(context)!.translate(
+                'statistics_content',
+                {
+                  'totalCars': totalCars.toString(),
+                  'averagePrice': averagePrice.toStringAsFixed(2),
+                  'selectedCar': _selectedCar?.make ?? 'None'
+                }
+            ),
           ),
           actions: [
             OutlinedButton(
-              child: const Text("Close"),
+              child: Text(AppLocalizations.of(context)!.translate('close')),
               onPressed: () {
                 Navigator.pop(context);
               },
@@ -157,10 +155,15 @@ class _CarsPageState extends State<CarsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cars For Sale'),
+        title: Text(AppLocalizations.of(context)!.translate('app_title')),
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
         actions: [
+          // Language button
+          IconButton(
+            icon: const Icon(Icons.language),
+            onPressed: _showLanguageDialog,
+          ),
           // Instructions button
           IconButton(
             icon: const Icon(Icons.help_outline),
@@ -176,7 +179,7 @@ class _CarsPageState extends State<CarsPage> {
               icon: const Icon(Icons.clear),
               onPressed: () {
                 setState(() => _selectedCar = null);
-                _showSuccessSnackbar("Selection cleared");
+                _showSuccessSnackbar(AppLocalizations.of(context)!.translate('selection_cleared'));
               },
             )
         ],
@@ -241,7 +244,7 @@ class _CarsPageState extends State<CarsPage> {
                 onPressed: () async {
                   final text = _quickAdd.text.trim();
                   if (text.isEmpty) {
-                    _showErrorSnackbar("Please enter a car make first!");
+                    _showErrorSnackbar(AppLocalizations.of(context)!.translate('enter_car_make'));
                     return;
                   }
 
@@ -259,17 +262,19 @@ class _CarsPageState extends State<CarsPage> {
                   await _db.carDao.insertCar(car);
                   _quickAdd.clear();
                   await _loadCars();
-                  _showSuccessSnackbar("Car '$text' added successfully!");
+                  _showSuccessSnackbar(
+                      AppLocalizations.of(context)!.translate('car_added', {'make': text})
+                  );
                 },
-                child: const Text("Add item"),
+                child: Text(AppLocalizations.of(context)!.translate('add_item')),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _quickAdd,
-                  decoration: const InputDecoration(
-                    labelText: 'Quick Add (Make)',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.translate('quick_add_label'),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
@@ -287,16 +292,21 @@ class _CarsPageState extends State<CarsPage> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _showStatisticsDialog,
-                  child: const Text("Show Statistics"),
+                  child: Text(AppLocalizations.of(context)!.translate('show_statistics')),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
-                    _showSuccessSnackbar("List refreshed! Total cars: ${_cars.length}");
+                    _showSuccessSnackbar(
+                        AppLocalizations.of(context)!.translate(
+                            'list_refreshed',
+                            {'count': _cars.length.toString()}
+                        )
+                    );
                   },
-                  child: const Text("Refresh List"),
+                  child: Text(AppLocalizations.of(context)!.translate('refresh_list')),
                 ),
               ),
             ],
@@ -315,7 +325,8 @@ class _CarsPageState extends State<CarsPage> {
                 child: ListTile(
                   title: Text('${car.year} ${car.make} ${car.model}'),
                   subtitle:
-                  Text('Price: \$${car.price} | KM: ${car.kilometres}'),
+                  Text('${AppLocalizations.of(context)!.translate('price')}: \$${car.price} | '
+                      '${AppLocalizations.of(context)!.translate('kilometres')}: ${car.kilometres}'),
                   onTap: () {
                     setState(() {
                       _selectedCar = car;
@@ -335,10 +346,10 @@ class _CarsPageState extends State<CarsPage> {
   // ========================================================
   Widget _buildDetailsPage() {
     if (_selectedCar == null) {
-      return const Center(
+      return Center(
         child: Text(
-          "Select a car to view details",
-          style: TextStyle(fontSize: 18, color: Colors.grey),
+          AppLocalizations.of(context)!.translate('select_car_message'),
+          style: const TextStyle(fontSize: 18, color: Colors.grey),
         ),
       );
     }
@@ -356,7 +367,7 @@ class _CarsPageState extends State<CarsPage> {
         child: Column(
           children: [
             Text(
-              "Car Details",
+              AppLocalizations.of(context)!.translate('car_details'),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -365,19 +376,19 @@ class _CarsPageState extends State<CarsPage> {
             ),
             const SizedBox(height: 16),
 
-            _input(_make, "Make"),
+            _input(_make, AppLocalizations.of(context)!.translate('make')),
             const SizedBox(height: 12),
 
-            _input(_model, "Model"),
+            _input(_model, AppLocalizations.of(context)!.translate('model')),
             const SizedBox(height: 12),
 
-            _input(_year, "Year", number: true),
+            _input(_year, AppLocalizations.of(context)!.translate('year'), number: true),
             const SizedBox(height: 12),
 
-            _input(_price, "Price", number: true),
+            _input(_price, AppLocalizations.of(context)!.translate('price'), number: true),
             const SizedBox(height: 12),
 
-            _input(_km, "Kilometres", number: true),
+            _input(_km, AppLocalizations.of(context)!.translate('kilometres'), number: true),
             const SizedBox(height: 20),
 
             // Additional buttons for notifications
@@ -386,7 +397,7 @@ class _CarsPageState extends State<CarsPage> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _showInstructionsDialog,
-                    child: const Text("Help"),
+                    child: Text(AppLocalizations.of(context)!.translate('help')),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -413,12 +424,12 @@ class _CarsPageState extends State<CarsPage> {
                       _selectedCar = updated;
                       await _loadCars();
                       setState(() {});
-                      _showSuccessSnackbar("Car updated successfully!");
+                      _showSuccessSnackbar(AppLocalizations.of(context)!.translate('car_updated'));
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                     ),
-                    child: const Text("Update"),
+                    child: Text(AppLocalizations.of(context)!.translate('update')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -430,19 +441,26 @@ class _CarsPageState extends State<CarsPage> {
                         context: context,
                         builder: (context) {
                           return AlertDialog(
-                            title: const Text("Confirm Delete"),
+                            title: Text(AppLocalizations.of(context)!.translate('confirm_delete')),
                             content: Text(
-                                "Are you sure you want to delete ${_selectedCar!.make} ${_selectedCar!.model}? This action cannot be undone."),
+                              AppLocalizations.of(context)!.translate(
+                                  'delete_confirmation_message',
+                                  {
+                                    'make': _selectedCar!.make,
+                                    'model': _selectedCar!.model
+                                  }
+                              ),
+                            ),
                             actions: [
                               OutlinedButton(
-                                child: const Text("Cancel"),
+                                child: Text(AppLocalizations.of(context)!.translate('cancel')),
                                 onPressed: () {
                                   Navigator.pop(context);
-                                  _showSuccessSnackbar("Delete cancelled");
+                                  _showSuccessSnackbar(AppLocalizations.of(context)!.translate('delete_cancelled'));
                                 },
                               ),
                               OutlinedButton(
-                                child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                                child: Text(AppLocalizations.of(context)!.translate('delete'), style: TextStyle(color: Colors.red)),
                                 onPressed: () async {
                                   Navigator.pop(context);
                                   await _db.carDao.deleteCar(_selectedCar!);
@@ -450,7 +468,12 @@ class _CarsPageState extends State<CarsPage> {
                                   _selectedCar = null;
                                   await _loadCars();
                                   setState(() {});
-                                  _showSuccessSnackbar("Car '$carName' deleted successfully!");
+                                  _showSuccessSnackbar(
+                                      AppLocalizations.of(context)!.translate(
+                                          'car_deleted',
+                                          {'carName': carName}
+                                      )
+                                  );
                                 },
                               ),
                             ],
@@ -461,7 +484,7 @@ class _CarsPageState extends State<CarsPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                     ),
-                    child: const Text("Delete"),
+                    child: Text(AppLocalizations.of(context)!.translate('delete')),
                   ),
                 )
               ],
@@ -481,24 +504,24 @@ class _CarsPageState extends State<CarsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Add Car"),
+        title: Text(AppLocalizations.of(context)!.translate('add_car')),
         content: SingleChildScrollView(
           child: Column(
             children: [
-              _input(_make, 'Make'),
+              _input(_make, AppLocalizations.of(context)!.translate('make')),
               const SizedBox(height: 8),
-              _input(_model, 'Model'),
+              _input(_make, AppLocalizations.of(context)!.translate('model')),
               const SizedBox(height: 8),
-              _input(_year, 'Year', number: true),
+              _input(_year, AppLocalizations.of(context)!.translate('year'), number: true),
               const SizedBox(height: 8),
-              _input(_price, 'Price', number: true),
+              _input(_price, AppLocalizations.of(context)!.translate('price'), number: true),
               const SizedBox(height: 8),
-              _input(_km, 'Kilometres', number: true),
+              _input(_km, AppLocalizations.of(context)!.translate('kilometres'), number: true),
               const SizedBox(height: 16),
 
               ElevatedButton(
                 onPressed: _loadPreviousCarData,
-                child: const Text("Copy Previous Car"),
+                child: Text(AppLocalizations.of(context)!.translate('copy_previous_car')),
               ),
             ],
           ),
@@ -508,12 +531,12 @@ class _CarsPageState extends State<CarsPage> {
             onPressed: () {
               Navigator.pop(context);
             },
-            child: const Text("Cancel"),
+            child: Text(AppLocalizations.of(context)!.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
               if (_make.text.isEmpty || _model.text.isEmpty) {
-                _showErrorSnackbar("Please fill in all required fields!");
+                _showErrorSnackbar(AppLocalizations.of(context)!.translate('fill_required_fields'));
                 return;
               }
 
@@ -531,9 +554,14 @@ class _CarsPageState extends State<CarsPage> {
               await _loadCars();
 
               Navigator.pop(context);
-              _showSuccessSnackbar("Car '${car.make} ${car.model}' added successfully!");
+              _showSuccessSnackbar(
+                  AppLocalizations.of(context)!.translate(
+                      'car_added',
+                      {'make': car.make}
+                  )
+              );
             },
-            child: const Text("Add"),
+            child: Text(AppLocalizations.of(context)!.translate('add')),
           )
         ],
       ),
@@ -565,8 +593,12 @@ class _CarsPageState extends State<CarsPage> {
       _price.text = prevPrice;
       _km.text = prevKm;
     });
-    _showSuccessSnackbar("Previous car data loaded!");
+    _showSuccessSnackbar(AppLocalizations.of(context)!.translate('previous_data_loaded'));
   }
+
+  // ========================================================
+  // SAVE RECENT SEARCH
+  // ========================================================
 
   // Method for saving recent searches in the Quick Add field
   Future<void> _saveRecentSearch(String searchText) async {
@@ -582,6 +614,46 @@ class _CarsPageState extends State<CarsPage> {
       _quickAdd.text = recentSearch;
     }
   }
+
+  // ========================================================
+  // INTERNATIONALIZATION
+  // ========================================================
+
+  // Method to change the language
+  void _changeLanguage(Locale locale) {
+    MyApp.setLocale(context, locale);
+  }
+
+  // Method for displaying language selection dialog
+    void _showLanguageDialog() {
+      showDialog<String>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(AppLocalizations.of(context)!.translate('language')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: Text(AppLocalizations.of(context)!.translate('english')),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _changeLanguage(const Locale('en'));
+                  },
+                ),
+                ListTile(
+                  title: Text(AppLocalizations.of(context)!.translate('spanish')),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _changeLanguage(const Locale('es'));
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
 
   // ========================================================
   // HELPERS
