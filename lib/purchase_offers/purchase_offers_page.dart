@@ -1,3 +1,4 @@
+//updated
 /// purchase_offer_page.dart
 ///
 /// Purchase Offer screen for the Vehicle Sales Management project.

@@ -1,3 +1,4 @@
+//Dao updated
 import 'package:floor/floor.dart';
 import 'purchase_offer_entity.dart';
 
