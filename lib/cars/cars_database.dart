@@ -5,7 +5,7 @@ import 'package:sqflite/sqflite.dart' as sqflite;
 import 'car_entity.dart';
 import 'car_dao.dart';
 
-part 'app_database.g.dart';
+part 'cars_database.g.dart';
 
 /// The main database class for the Vehicle Sales Management application.
 /// 
