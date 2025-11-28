@@ -180,8 +180,6 @@ class HomePage extends StatelessWidget {
                     'Manage purchase offers',
                     Icons.attach_money,
                     Colors.purple,
-
-                    // Link to purchase offer page
                         () {
                       Navigator.push(
                         context,
