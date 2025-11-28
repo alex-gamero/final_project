@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'purchase_offers/purchase_offer_page.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'purchase_offers/purchase_offers_page.dart';
 import 'cars/cars_page.dart';
