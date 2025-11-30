@@ -99,7 +99,7 @@ class _$PurchaseOfferDatabase extends PurchaseOfferDatabase {
       },
       onCreate: (database, version) async {
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `PurchaseOffer` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `title` TEXT NOT NULL, `details` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)');
+            'CREATE TABLE IF NOT EXISTS `PurchaseOffer` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `customerId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `price` REAL NOT NULL, `offerDate` INTEGER NOT NULL, `isAccepted` INTEGER NOT NULL, `details` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -123,7 +123,39 @@ class _$PurchaseOfferDao extends PurchaseOfferDao {
             'PurchaseOffer',
             (PurchaseOffer item) => <String, Object?>{
                   'id': item.id,
-                  'title': item.title,
+                  'customerId': item.customerId,
+                  'itemId': item.itemId,
+                  'price': item.price,
+                  'offerDate': item.offerDate,
+                  'isAccepted': item.isAccepted ? 1 : 0,
+                  'details': item.details,
+                  'createdAt': item.createdAt
+                }),
+        _purchaseOfferUpdateAdapter = UpdateAdapter(
+            database,
+            'PurchaseOffer',
+            ['id'],
+            (PurchaseOffer item) => <String, Object?>{
+                  'id': item.id,
+                  'customerId': item.customerId,
+                  'itemId': item.itemId,
+                  'price': item.price,
+                  'offerDate': item.offerDate,
+                  'isAccepted': item.isAccepted ? 1 : 0,
+                  'details': item.details,
+                  'createdAt': item.createdAt
+                }),
+        _purchaseOfferDeletionAdapter = DeletionAdapter(
+            database,
+            'PurchaseOffer',
+            ['id'],
+            (PurchaseOffer item) => <String, Object?>{
+                  'id': item.id,
+                  'customerId': item.customerId,
+                  'itemId': item.itemId,
+                  'price': item.price,
+                  'offerDate': item.offerDate,
+                  'isAccepted': item.isAccepted ? 1 : 0,
                   'details': item.details,
                   'createdAt': item.createdAt
                 });
@@ -136,20 +168,37 @@ class _$PurchaseOfferDao extends PurchaseOfferDao {
 
   final InsertionAdapter<PurchaseOffer> _purchaseOfferInsertionAdapter;
 
+  final UpdateAdapter<PurchaseOffer> _purchaseOfferUpdateAdapter;
+
+  final DeletionAdapter<PurchaseOffer> _purchaseOfferDeletionAdapter;
+
   @override
   Future<List<PurchaseOffer>> getAllOffers() async {
     return _queryAdapter.queryList(
         'SELECT * FROM PurchaseOffer ORDER BY createdAt DESC',
         mapper: (Map<String, Object?> row) => PurchaseOffer(
             id: row['id'] as int?,
-            title: row['title'] as String,
+            customerId: row['customerId'] as String,
+            itemId: row['itemId'] as String,
+            price: row['price'] as double,
+            offerDate: row['offerDate'] as int,
+            isAccepted: (row['isAccepted'] as int) != 0,
             details: row['details'] as String,
             createdAt: row['createdAt'] as int));
   }
 
   @override
-  Future<void> deleteOffer(int id) async {
-    await _queryAdapter.queryNoReturn('DELETE FROM PurchaseOffer WHERE id = ?1',
+  Future<PurchaseOffer?> findOfferById(int id) async {
+    return _queryAdapter.query('SELECT * FROM PurchaseOffer WHERE id = ?1',
+        mapper: (Map<String, Object?> row) => PurchaseOffer(
+            id: row['id'] as int?,
+            customerId: row['customerId'] as String,
+            itemId: row['itemId'] as String,
+            price: row['price'] as double,
+            offerDate: row['offerDate'] as int,
+            isAccepted: (row['isAccepted'] as int) != 0,
+            details: row['details'] as String,
+            createdAt: row['createdAt'] as int),
         arguments: [id]);
   }
 
@@ -157,5 +206,16 @@ class _$PurchaseOfferDao extends PurchaseOfferDao {
   Future<int> insertOffer(PurchaseOffer offer) {
     return _purchaseOfferInsertionAdapter.insertAndReturnId(
         offer, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<int> updateOffer(PurchaseOffer offer) {
+    return _purchaseOfferUpdateAdapter.updateAndReturnChangedRows(
+        offer, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<int> deleteOffer(PurchaseOffer offer) {
+    return _purchaseOfferDeletionAdapter.deleteAndReturnChangedRows(offer);
   }
 }

@@ -1,4 +1,3 @@
-//updated
 import 'dart:async';
 import 'package:floor/floor.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
@@ -12,3 +11,5 @@ part 'purchase_offer_database.g.dart';
 abstract class PurchaseOfferDatabase extends FloorDatabase {
   PurchaseOfferDao get offerDao;
 }
+
+
